@@ -14,6 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -108,7 +109,7 @@ public class CsvExporter {
     public String exportarReservasActivas() {
         try {
             // Obtener reservas en estados activos
-            List<Reserva> reservasBooked = reservaService.buscarPorEstado("BOOKED");
+            List<Reserva> reservasBooked = new ArrayList<>(reservaService.buscarPorEstado("BOOKED"));
             List<Reserva> reservasCheckedIn = reservaService.buscarPorEstado("CHECKED_IN");
             
             // Combinar listas

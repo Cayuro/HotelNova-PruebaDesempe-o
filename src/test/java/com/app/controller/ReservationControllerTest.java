@@ -298,8 +298,12 @@ class ReservationControllerTest {
         @Override
         public boolean updateEstadoWithConnection(Connection conn, int idHabitacion, String estado)
                 throws SQLException {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException("Unimplemented method 'updateEstadoWithConnection'");
+            Habitacion h = storage.get(idHabitacion);
+            if (h != null) {
+                h.setEstado(estado);
+                return true;
+            }
+            return false;
         }
     }
 
@@ -419,6 +423,11 @@ class ReservationControllerTest {
             }
             reserva.setEstado(estado);
             return true;
+        }
+
+        @Override
+        public boolean updateEstadoWithConnection(Connection conn, int idReserva, String estado) throws SQLException {
+            return updateEstado(idReserva, estado);
         }
     }
 }

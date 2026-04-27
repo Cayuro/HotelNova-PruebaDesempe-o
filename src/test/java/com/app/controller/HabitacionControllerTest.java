@@ -35,7 +35,7 @@ class HabitacionControllerTest {
 
     @Test
     void shouldCreateRoomWhenNumberIsUnique() {
-        view.enqueueInputs("101", "Doble", "120.50");
+        view.enqueueInputs("101", "Doble", "2", "120.50");
 
         controller.crearHabitacion();
 
@@ -50,7 +50,7 @@ class HabitacionControllerTest {
     @Test
     void shouldRejectRoomWhenNumberAlreadyExists() {
         habitacionDAO.save(new Habitacion(0, "101", "Doble", new BigDecimal("120.50"), true));
-        view.enqueueInputs("101", "Suite", "150.00");
+        view.enqueueInputs("101", "Suite", "1", "150.00");
 
         controller.crearHabitacion();
 
@@ -60,7 +60,7 @@ class HabitacionControllerTest {
 
     @Test
     void shouldRejectRoomWhenPriceIsInvalid() {
-        view.enqueueInputs("102", "Simple", "0");
+        view.enqueueInputs("102", "Simple", "1", "0");
 
         controller.crearHabitacion();
 
@@ -190,8 +190,13 @@ class HabitacionControllerTest {
         @Override
         public boolean updateEstadoWithConnection(Connection conn, int idHabitacion, String estado)
                 throws SQLException {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException("Unimplemented method 'updateEstadoWithConnection'");
+            Habitacion h = storage.get(idHabitacion);
+            if (h != null) {
+                h.setEstado(estado);
+                return true;
+            }
+            return false;
         }
     }
 }
+

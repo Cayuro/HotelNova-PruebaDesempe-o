@@ -104,7 +104,7 @@ public class ReservationController {
             view.showError("ID inválido. Debe ser un número entero.");
         } catch (DateTimeParseException e) {
             view.showError("Fecha inválida. Usa formato yyyy-MM-dd.");
-        } catch (IllegalArgumentException | IllegalStateException e) {
+        } catch (IllegalArgumentException | IllegalStateException | com.app.exception.BusinessException e) {
             view.showError(e.getMessage());
         }
     }
@@ -235,7 +235,7 @@ public class ReservationController {
             }
         } catch (NumberFormatException e) {
             view.showError("ID inválido.");
-        } catch (IllegalArgumentException | IllegalStateException e) {
+        } catch (IllegalArgumentException | IllegalStateException | com.app.exception.BusinessException e) {
             view.showError(e.getMessage());
         }
     }
@@ -256,7 +256,7 @@ public class ReservationController {
             }
         } catch (NumberFormatException e) {
             view.showError("ID inválido.");
-        } catch (IllegalArgumentException | IllegalStateException e) {
+        } catch (IllegalArgumentException | IllegalStateException | com.app.exception.BusinessException e) {
             view.showError(e.getMessage());
         }
     }
