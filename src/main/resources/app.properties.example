@@ -1,0 +1,6 @@
+app.name    = MVC Demo
+app.version = 1.0
+view.type   = swing
+horaCheckIn = 15
+horaCheckOut = 12
+iva = 0.19
