@@ -7,17 +7,17 @@
 
 
 CREATE TABLE IF NOT EXISTS usuarios (
-    id      SERIAL PRIMARY KEY,
-    nombre  VARCHAR(100) NOT NULL,
-    email   VARCHAR(150) NOT NULL UNIQUE
-);
-
-
-CREATE TABLE IF NOT EXISTS tareas (
-id SERIAL PRIMARY KEY,
-titulo VARCHAR(120) NOT NULL,
-pendiente BOOLEAN NOT NULL DEFAULT TRUE,
-fecha_limite DATE NOT NULL
+    id            SERIAL PRIMARY KEY,
+    nombre        VARCHAR(100) NOT NULL,
+    email         VARCHAR(150) NOT NULL UNIQUE,
+    username      VARCHAR(80) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    role          VARCHAR(20) NOT NULL,
+    activo        BOOLEAN NOT NULL DEFAULT TRUE,
+    last_login_at TIMESTAMP NULL,
+    created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_usuarios_role CHECK (role IN ('ADMIN', 'RECEPCIONISTA'))
 );
 
 
@@ -52,11 +52,11 @@ CREATE TABLE IF NOT EXISTS reservas (
 );
 
 CREATE INDEX IF NOT EXISTS idx_habitaciones_activa ON habitaciones(activa);
-CREATE INDEX IF NOT EXISTS idx_tareas_fecha_limite ON tareas(fecha_limite);
 CREATE INDEX IF NOT EXISTS idx_huespedes_activo ON huespedes(activo);
-CREATE INDEX IF NOT EXISTS idx_tareas_pendiente ON tareas(pendiente);
-CREATE INDEX IF NOT EXISTS idx_tareas_fecha_limite ON tareas(fecha_limite);
 CREATE INDEX IF NOT EXISTS idx_nombre ON usuarios(nombre);
+CREATE INDEX IF NOT EXISTS idx_usuarios_username ON usuarios(username);
+CREATE INDEX IF NOT EXISTS idx_usuarios_role ON usuarios(role);
+CREATE INDEX IF NOT EXISTS idx_usuarios_activo ON usuarios(activo);
 
 
 -- ==========================================
@@ -66,18 +66,23 @@ CREATE INDEX IF NOT EXISTS idx_nombre ON usuarios(nombre);
 -- USE appdb;
 
 -- CREATE TABLE IF NOT EXISTS usuarios (
---     id      INT AUTO_INCREMENT PRIMARY KEY,
---     nombre  VARCHAR(100) NOT NULL,
---     email   VARCHAR(150) NOT NULL UNIQUE,
---     INDEX idx_nombre (nombre)
+--     id INT AUTO_INCREMENT PRIMARY KEY,
+--     nombre VARCHAR(100) NOT NULL,
+--     email VARCHAR(150) NOT NULL UNIQUE,
+--     username VARCHAR(80) NOT NULL UNIQUE,
+--     password_hash VARCHAR(255) NOT NULL,
+--     role VARCHAR(20) NOT NULL,
+--     activo BOOLEAN NOT NULL DEFAULT TRUE,
+--     last_login_at DATETIME NULL,
+--     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+--     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+--     CONSTRAINT chk_usuarios_role CHECK (role IN ('ADMIN', 'RECEPCIONISTA')),
+--     INDEX idx_nombre (nombre),
+--     INDEX idx_usuarios_username (username),
+--     INDEX idx_usuarios_role (role),
+--     INDEX idx_usuarios_activo (activo)
 -- );
 
--- CREATE TABLE IF NOT EXISTS tareas (
--- id INT AUTO_INCREMENT PRIMARY KEY,
--- titulo VARCHAR(120) NOT NULL,
--- pendiente BOOLEAN NOT NULL DEFAULT TRUE,
--- fecha_limite DATE NOT NULL
--- );
 
 -- CREATE TABLE IF NOT EXISTS huespedes (
 --     id INT AUTO_INCREMENT PRIMARY KEY,
