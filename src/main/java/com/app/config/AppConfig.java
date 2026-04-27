@@ -2,6 +2,7 @@ package com.app.config;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.math.BigDecimal;
 import java.util.Properties;
 
 /**
@@ -48,4 +49,7 @@ public class AppConfig {
     // ── App getters ──
     public String getAppName()    { return appProps.getProperty("app.name"); }
     public String getViewType()   { return appProps.getProperty("view.type", "console"); }
+    public BigDecimal getIvaRate() {
+        return new BigDecimal(appProps.getProperty("iva", "0.19"));
+    }
 }
