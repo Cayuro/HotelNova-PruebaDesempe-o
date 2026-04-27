@@ -1,6 +1,5 @@
 package com.app.view;
 
-import com.app.model.entity.Tarea;
 import com.app.model.entity.Usuario;
 import java.util.List;
 import java.util.Scanner;
@@ -32,15 +31,6 @@ public class ConsoleView extends BaseView {
         System.out.println("\n" + formatUsuario(usuario));
     }
 
-    @Override
-    public void showTareas(List<Tarea> tareas) {
-        System.out.println("\n" + formatTareas(tareas));
-    }
-
-    @Override
-    public void showTarea(Tarea tarea) {
-        System.out.println("\n" + formatTarea(tarea));
-    }
 
     @Override
     public String askInput(String prompt) {

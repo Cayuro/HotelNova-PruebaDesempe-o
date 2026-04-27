@@ -1,6 +1,5 @@
 package com.app.view;
 
-import com.app.model.entity.Tarea;
 import com.app.model.entity.Usuario;
 import javax.swing.JOptionPane;
 import java.util.List;
@@ -40,19 +39,6 @@ public class SwingView extends BaseView {
                 JOptionPane.PLAIN_MESSAGE);
     }
 
-    @Override
-    public void showTareas(List<Tarea> tareas) {
-        JOptionPane.showMessageDialog(null,
-                formatTareas(tareas), "Lista de Tareas",
-                JOptionPane.PLAIN_MESSAGE);
-    }
-
-    @Override
-    public void showTarea(Tarea tarea) {
-        JOptionPane.showMessageDialog(null,
-                formatTarea(tarea), "Detalle de Tarea",
-                JOptionPane.PLAIN_MESSAGE);
-    }
 
     @Override
     public String askInput(String prompt) {
