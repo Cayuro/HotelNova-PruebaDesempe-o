@@ -6,9 +6,16 @@ import com.app.controller.HabitacionController;
 import com.app.controller.HuespedController;
 import com.app.controller.ReservationController;
 import com.app.controller.UsuarioController;
+import com.app.controller.ReportesController;
 import com.app.model.entity.Usuario;
 import com.app.service.AuthService;
+import com.app.service.HabitacionService;
+import com.app.service.ReservaService;
+import com.app.service.HuespedService;
 import com.app.service.impl.AuthServiceImpl;
+import com.app.service.impl.HabitacionServiceImpl;
+import com.app.service.impl.ReservaServiceImpl;
+import com.app.service.impl.HuespedServiceImpl;
 import com.app.util.PasswordHasher;
 
 // DAOS 
@@ -45,10 +52,16 @@ public class Main {
         HuespedDAO          huespedDAO  = new HuespedDAOImpl();
         ReservaDAO          reservaDAO  = new ReservaDAOImpl();
         UsuarioDAO          usuarioDAO  = new UsuarioDAOImpl();
+        
+        // Los servicios se instancian con sus DAOs
+        HabitacionService   habitacionService = new HabitacionServiceImpl(habitacionDAO);
+        HuespedService      huespedService = new HuespedServiceImpl(huespedDAO);
+        ReservaService      reservaService = new ReservaServiceImpl(reservaDAO, habitacionDAO, huespedDAO);
         AuthService         authService = new AuthServiceImpl(usuarioDAO);
 
-        // los controladores reciben la vista y los DOAS que necesitan
+        // los controladores reciben la vista y sus dependencias
         ReservationController reservaController = new ReservationController(view, reservaDAO, habitacionDAO, huespedDAO);
+        ReportesController  reportesController = new ReportesController(view, habitacionService, reservaService, huespedService);
 
         HabitacionController habitacionctrl = new HabitacionController(view, habitacionDAO);
         HuespedController   huespedController = new HuespedController(view,huespedDAO);
@@ -83,6 +96,7 @@ public class Main {
                     "Gestion de Habitaciones", 
                     "Gestion de Reservas",
                     "Gestion de Huespedes",
+                    "Reportes y Exportaciones",
                     "Salir"};
             }
          
@@ -94,7 +108,7 @@ public class Main {
                 case 1 -> reservaController.run();
                 case 2 -> huespedController.run();
                 case 3 -> habitacionctrl.run();
-                case 4 -> running = false;
+                case 5 -> running = false;
                 default -> view.showError("Opcion no valida");
                 }
             } else {
@@ -103,7 +117,8 @@ public class Main {
                 case 2 -> habitacionctrl.run();
                 case 3 -> reservaController.run();
                 case 4 -> huespedController.run();
-                case 5 -> running = false;
+                case 5 -> reportesController.run();
+                case 6 -> running = false;
                 default -> view.showError("Opcion no valida");
                 }
             }
