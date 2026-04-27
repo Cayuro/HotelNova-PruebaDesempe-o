@@ -5,6 +5,8 @@ public class Usuario {
     private int    id;
     private String nombre;
     private String email;
+    private String password; // Agregado para autenticación
+    private String role; // Agregado para roles (admin, huésped)
 
     public Usuario() {}
     public Usuario(int id, String nombre, String email) {
