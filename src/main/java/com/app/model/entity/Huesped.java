@@ -1,25 +1,35 @@
 package com.app.model.entity;
 
 public class Huesped extends Usuario{
-    boolean activo;
-    public Huesped() {
-        super();
-        this.activo = true;
+    private boolean activo;
+
+    public Huesped(){}
+    public Huesped(int id, String nombre, String email,boolean estado){
+        super(id,nombre,email);
+        this.activo = estado;
     }
-    Huesped(int id, String nombre, String email) {
-        super(id, nombre, email);
+    public Huesped(int id, String nombre, String email){
+        super(id,nombre,email);
         this.activo = true;
-    }
-    public Huesped(int id, String nombre, String email, boolean activo) {
-        super(id, nombre, email);
-        this.activo = activo;
     }
 
-    public boolean isActivo(){
+    // getters
+   
+    public boolean isActivo() {
         return activo;
     }
+    //setters
     public void setActivo(boolean activo) {
         this.activo = activo;
     }
-}
 
+    @Override
+    public String toString() {
+        return "Huesped{" +
+                "id=" + getId() +
+                ", nombre='" + getNombre() + '\'' +
+                ", email='" + getEmail() + '\'' +
+                ", activo=" + activo +
+                '}';
+    }
+}

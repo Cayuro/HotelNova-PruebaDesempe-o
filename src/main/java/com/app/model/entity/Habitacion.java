@@ -6,59 +6,69 @@ public class Habitacion {
     private int id;
     private String numero;
     private String tipo;
-    private BigDecimal precioNoche;
-    private boolean disponible;
+    private BigDecimal precioPorNoche;
+    private boolean activa;
 
     public Habitacion() {}
 
-    public Habitacion(int id, String numero, String tipo, BigDecimal precio, boolean disponible) {
+    public Habitacion(int id, String numero, String tipo, BigDecimal precioPorNoche, boolean activa) {
         this.id = id;
         this.numero = numero;
         this.tipo = tipo;
-        this.precioNoche = precio;
-        this.disponible = disponible;
+        this.precioPorNoche = precioPorNoche;
+        this.activa = activa;
     }
 
-    // Getters / Setters
+    // Getters
     public int getId() {
         return id;
-    }
-
-    public void setId(int id) {
-        this.id = id;
     }
 
     public String getNumero() {
         return numero;
     }
 
-    public void setNumero(String numero) {
-        this.numero = numero;
-    }
-
     public String getTipo() {
         return tipo;
+    }
+
+    public BigDecimal getPrecioPorNoche() {
+        return precioPorNoche;
+    }
+
+    public boolean isActiva() {
+        return activa;
+    }
+
+    // Setters
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public void setNumero(String numero) {
+        this.numero = numero;
     }
 
     public void setTipo(String tipo) {
         this.tipo = tipo;
     }
 
-    public BigDecimal getPrecioNoche() {
-        return precioNoche;
+    public void setPrecioPorNoche(BigDecimal precioPorNoche) {
+        this.precioPorNoche = precioPorNoche;
     }
 
-    public void setPrecioNoche(BigDecimal precioNoche) {
-        this.precioNoche = precioNoche;
+    public void setActiva(boolean activa) {
+        this.activa = activa;
     }
 
-    public boolean isDisponible() {
-        return disponible;
+    @Override
+    public String toString() {
+        return "Habitacion{" +
+                "id=" + id +
+                ", numero='" + numero + '\'' +
+                ", tipo='" + tipo + '\'' +
+                ", precioPorNoche=" + precioPorNoche +
+                ", activa=" + activa +
+                '}';
     }
-
-    public void setDisponible(boolean disponible) {
-        this.disponible = disponible;
-    }
-
-    
 }
