@@ -1,6 +1,6 @@
-# HotelNova - Roadmap de Implementacion (STEP 2 a STEP 9)
+# HotelNova - Roadmap de Implementacion (STEP 2 a STEP 10)
 
-Este roadmap esta alineado con tu estructura actual: MVC + DAO, sin capa service separada.
+Este roadmap esta alineado con la prueba de desempeno: controller + service + dao + model, con UI JOptionPane y JDBC.
 
 ## STEP 2 - Estructura de Proyecto Maven
 
@@ -12,6 +12,8 @@ src/
     java/
       com/app/
         controller/
+        service/
+          impl/
         dao/
           impl/
         model/
@@ -28,30 +30,41 @@ src/
       config.properties
       schema.sql
       logging.properties
+      app.log
   test/
     java/
       com/app/
         controller/
+        service/
         dao/
 ```
 
 Paquetes minimos requeridos:
 - controller
+- service
 - dao
 - model
 - view
 - exception
 - util
 
-## STEP 3 - Modelos
+## STEP 3 - Modelos de Dominio
 
 Checklist:
-- Crear Room, Guest, User, Reservation segun especificacion.
+- Crear Habitacion, Huesped, Usuario, Reserva segun especificacion actualizada.
+- Incluir campos requeridos por la prueba: capacidad/estado habitacion, role/passwordHash en usuario, trazabilidad en reserva.
 - Evitar logica de negocio pesada dentro de entidades.
 - Incluir constructores validos, equals/hashCode/toString cuando aplique.
 - Si usas DTO, separar model/entity de model/dto.
 
-## STEP 4 - DAO JDBC
+## STEP 4 - Schema SQL y Migraciones
+
+Checklist tecnico:
+- Definir schema objetivo con UNIQUE, FK, CHECK e indices de reservas.
+- Asegurar columnas para autenticacion, roles y trazabilidad de reserva.
+- Versionar cambios de esquema para evitar perdida de datos.
+
+## STEP 5 - DAO JDBC
 
 Checklist tecnico:
 - PreparedStatement en todas las queries.
@@ -60,89 +73,89 @@ Checklist tecnico:
 - Conversion SQLException -> DataAccessException.
 
 DAO a implementar:
-- RoomDAO + RoomDAOImpl
-- GuestDAO + GuestDAOImpl
-- UserDAO + UserDAOImpl
+- HabitacionDAO + HabitacionDAOImpl
+- HuespedDAO + HuespedDAOImpl
+- UsuarioDAO + UsuarioDAOImpl
 - ReservationDAO + ReservationDAOImpl
 
-## STEP 5 - Logica de negocio en Controller + DAO
+## STEP 6 - Service Layer (logica de negocio)
 
 Regla clave:
-- No habra capa service separada.
-- Las reglas de negocio se orquestan en controller y se apoyan en DAO para consultas/validaciones de persistencia.
+- La logica de negocio vive en service.
+- Service coordina validaciones, calculos y transacciones usando DAO.
 
 Checklist:
 - Validar RN-01 a RN-07.
+- Agregar seguridad de autenticacion (RN-08): login, roles y password hash.
 - Crear transacciones para createReservation/checkIn/checkOut.
 - Usar setAutoCommit(false), commit(), rollback().
 - Traducir errores de infraestructura a excepciones de negocio.
 
-## STEP 6 - Controllers + View (JOptionPane)
+## STEP 7 - Controllers + View (JOptionPane)
 
 Responsabilidad:
-- Controller: orquestacion, validaciones de negocio y manejo de excepciones.
+- Controller: orquestacion de UI y delegacion en service.
 - View: entrada/salida y mensajes (JOptionPane o consola).
 
 Checklist:
-- Menus de Room, Guest, Reservation, Reports.
+- Menus de Habitaciones, Huespedes, Usuarios, Reservas, Exportaciones.
 - Manejo de excepciones de negocio con mensajes comprensibles.
+- Helpers de tablas de texto con etiquetas [ACTIVO]/[INACTIVO] y [DISPONIBLE]/[OCUPADA].
 - Logging de errores tecnicos.
 
-## STEP 7 - Utilities
+## STEP 8 - Utilities y Archivos
 
 Componentes:
 - ConfigReader: lectura de config.properties/database.properties.
-- CsvExporter: exportacion de reportes.
+- CsvExporter: exportacion de habitaciones y reservas activas.
 - AppLogger: centralizar logs en archivo.
 
-Configuracion sugerida:
-- tax.rate en config.properties
-- report.output.dir en config.properties
+Configuracion obligatoria:
+- db.url, db.user, db.password
+- horaCheckIn, horaCheckOut
+- iva
 
-## STEP 8 - Tests JUnit 5
+## STEP 9 - Tests JUnit 5
 
 Casos minimos:
-- overlapping reservations
-- invalid dates
-- guest inactive
-- room uniqueness
-- check-out flow
-- cost calculation
+- validacion de numero de habitacion unico
+- validacion de disponibilidad de habitacion
+- validacion de huesped activo
+- validacion de fechas invalidas
+- validacion de no solapamiento
+- validacion de check-out sin reserva activa
+- validacion de costo final con IVA desde properties
 
 Criterio:
-- Tests enfocados en controller (reglas de negocio) y DAO (persistencia).
+- Tests enfocados en service (reglas de negocio) y DAO (persistencia).
 - DAO probado con dobles o base temporal segun estrategia.
 
-## STEP 9 - README Final
+## STEP 10 - Documentacion Final y Trazabilidad
 
-El README debe incluir:
-- Explicacion de arquitectura MVC + DAO.
-- Prerrequisitos y setup.
-- Scripts SQL (y como ejecutarlos).
-- Como correr aplicacion.
-- Como correr tests.
-- Problemas comunes y troubleshooting.
+Checklist:
+- Actualizar README con setup/run/tests.
+- Mantener actualizado `target/docsFinal` por iteracion:
+  - MODELS_NOTEBOOK.md
+  - DAOS_NOTEBOOK.md
+  - CONTROLLERS_NOTEBOOK.md
+  - SPEC_ALIGNMENT_NOTEBOOK.md
+  - TESTS_NOTEBOOK.md (recomendado)
 
 ## Matriz de Trazabilidad
 
-- RN-01 -> RoomController.create/update + RoomDAO.existsByRoomNumber + UNIQUE en DB + test room uniqueness
-- RN-02 -> ReservationController.create + ReservationDAO.existsOverlap + test overlapping reservations
-- RN-03 -> ReservationController.create + GuestDAO.existsActiveById + test guest inactive
-- RN-04 -> ReservationController.create + test invalid dates
-- RN-05 -> ReservationController.checkOut + test check-out flow
-- RN-06 -> ReservationController.create/checkOut + config.properties + test cost calculation
-- RN-07 -> ReservationController transactional methods + tests de errores y rollback
+- RN-01 -> HabitacionService.create/update + HabitacionDAO.existsByNumero + UNIQUE DB + test room uniqueness
+- RN-02 -> ReservaService.create/checkIn + HabitacionDAO/ReservaDAO + test room availability
+- RN-03 -> ReservaService.create + HuespedDAO.existsActivoById + test guest inactive
+- RN-04 -> ReservaService.create + test invalid dates
+- RN-05 -> ReservaService.checkOut + test check-out without active reservation
+- RN-06 -> ReservaService.checkOut + config.properties(iva) + test cost calculation
+- RN-07 -> ReservaService transaccional + tests de rollback
+- RN-08 -> AuthService.login + UsuarioDAO.findByUsername + test login/roles/hash
 
 ## Regla Final de Trabajo (Tutoria)
 - Este roadmap se ejecuta en modo tutoria: primero explicacion, luego ejecucion.
 - No se genera codigo por defecto; se genera solo si el usuario lo solicita de forma explicita.
 - En cada paso se debe explicar objetivo, decisiones y resultado esperado antes de implementar.
 
-Explain all architectural decisions of this project clearly, as if I were defending it in a technical interview.
-
-Focus on:
-- Layered architecture
-- Why business logic is in service layer
-- DAO pattern benefits
-- Transaction management
-- Exception handling strategy
+Nota:
+- Este roadmap reemplaza la variante sin service layer para cumplir el enunciado de la prueba.

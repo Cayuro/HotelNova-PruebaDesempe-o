@@ -1,26 +1,51 @@
 # HotelNova - Especificacion Funcional y Tecnica (Spec-Driven Development)
 
 ## 0. Alcance
-Este documento define la especificacion base para construir HotelNova con Java SE 17, arquitectura MVC + DAO y JDBC sin ORM.
+Este documento define la especificacion base para la prueba de desempeno de HotelNova.
 
-Objetivo:
-- Tener una especificacion cerrada antes de codificar.
-- Evitar cambios improvisados durante desarrollo.
-- Garantizar trazabilidad entre reglas de negocio, casos de uso, interfaces y pruebas.
-- Mantener el proyecto lo mas apegado posible a la estructura actual: model, view, controller, dao.
+Contexto de negocio:
+- HotelNova necesita centralizar habitaciones, huespedes, usuarios y reservas.
+- Se requiere eliminar duplicidad, inconsistencias de disponibilidad y falta de control por roles.
 
-## 1. Entidades Core y Atributos
+Objetivo tecnico:
+- Java SE 17 o superior.
+- Interfaz con JOptionPane.
+- Persistencia con JDBC (PostgreSQL o MySQL).
+- Arquitectura por capas: controller, service, dao, model.
+- Manejo de archivos (.properties y CSV), logging y pruebas JUnit 5.
 
-### 1.1 Room (Habitacion)
+## 1. Arquitectura por Capas
+
+### 1.1 Capas obligatorias
+- View: menus modales JOptionPane, mensajes y tablas de texto.
+- Controller: orquesta casos de uso y manejo de errores para UI.
+- Service: reglas de negocio, validaciones y transacciones.
+- DAO: persistencia JDBC y consultas especializadas.
+- Model: entidades y enums del dominio.
+
+### 1.2 Regla de responsabilidades
+- La logica de negocio vive en service.
+- Controller no ejecuta SQL ni calculos de negocio complejos.
+- DAO no decide reglas de negocio, solo responde preguntas de datos.
+
+### 1.3 Trazas operativas
+- Cada operacion CRUD debe dejar traza en consola o log simulando llamadas HTTP.
+- Ejemplo: `POST /habitaciones`, `PATCH /reservas/{id}/checkout`.
+
+## 2. Modelo de Dominio
+
+### 2.1 Habitacion
 - id: Integer
-- roomNumber: String (unico)
-- type: String (SINGLE, DOUBLE, SUITE)
-- pricePerNight: BigDecimal
-- active: boolean
+- numero: String (unico)
+- tipo: String (SINGLE, DOUBLE, SUITE)
+- capacidad: Integer
+- precioPorNoche: BigDecimal
+- estado: String (DISPONIBLE, OCUPADA)
+- isActiva: boolean
 - createdAt: LocalDateTime
-- updatedAt: LocalDateTime
+- updatedAt: LocalDateTime (recomendado)
 
-### 1.2 Guest (Huesped)
+### 2.2 Huesped
 - id: Integer
 - fullName: String
 - email: String
@@ -29,323 +54,250 @@ Objetivo:
 - createdAt: LocalDateTime
 - updatedAt: LocalDateTime
 
-### 1.3 User (Usuario del sistema)
+### 2.3 Usuario
 - id: Integer
 - username: String (unico)
-- passwordHash: String
-- role: String (ADMIN, RECEPTIONIST)
+- passwordHash: String (no plaintext)
+- role: String (ADMIN, RECEPCIONISTA)
 - active: boolean
 - lastLoginAt: LocalDateTime (opcional)
 - createdAt: LocalDateTime
 - updatedAt: LocalDateTime
 
-### 1.4 Reservation (Reserva)
+### 2.4 Reserva
 - id: Integer
-- roomId: Integer (FK -> Room.id)
-- guestId: Integer (FK -> Guest.id)
+- roomId: Integer (FK -> Habitacion.id)
+- guestId: Integer (FK -> Huesped.id)
 - checkInDate: LocalDate
 - checkOutDate: LocalDate
 - status: String (BOOKED, CHECKED_IN, CHECKED_OUT, CANCELLED)
 - taxRateApplied: BigDecimal
 - totalCost: BigDecimal
-- createdByUserId: Integer (FK -> User.id)
+- createdByUserId: Integer (FK -> Usuario.id)
 - createdAt: LocalDateTime
 - updatedAt: LocalDateTime
 
-## 2. Relaciones
-- Room 1..N Reservation
-- Guest 1..N Reservation
-- User 1..N Reservation (quien registra la reserva)
-
-Restricciones de integridad:
-- Reservation.roomId debe existir en Room.
-- Reservation.guestId debe existir en Guest.
-- Reservation.createdByUserId debe existir en User.
-- No se permite eliminar fisicamente Room/Guest/User con reservas historicas; usar active=false.
-
 ## 3. Reglas de Negocio
 
-### RN-01: Numero de habitacion unico
-- roomNumber no se repite.
-- Validacion en controller/dao + constraint UNIQUE en base de datos.
+### RN-01 Numero de habitacion unico
+- `numero` no se repite.
+- Validar en service + constraint UNIQUE en base de datos.
 
-### RN-02: No reservas solapadas para la misma habitacion
-- Dadas dos reservas A y B de la misma habitacion, no puede existir interseccion de fechas.
-- Solapamiento: A.checkIn < B.checkOut y B.checkIn < A.checkOut.
-- Aplicar para estados BOOKED y CHECKED_IN.
+### RN-02 Disponibilidad de habitacion
+- Solo habitaciones activas y en estado DISPONIBLE pueden reservarse.
 
-### RN-03: Huesped activo para reservar
-- Solo Guest.active=true puede crear reservas.
+### RN-03 Huesped activo para reservar
+- Solo `huesped.active = true` puede crear reservas.
 
-### RN-04: Fechas validas
-- checkInDate < checkOutDate.
+### RN-04 Fechas validas
+- `checkInDate < checkOutDate`.
 - No se aceptan fechas nulas.
 
-### RN-05: No check-out sin reserva activa
-- Check-out solo para reservas en estado CHECKED_IN.
+### RN-05 No solapamiento
+- Para la misma habitacion no se permiten reservas solapadas.
+- Formula: `A.checkIn < B.checkOut` y `B.checkIn < A.checkOut`.
+- Aplica al menos para estados BOOKED y CHECKED_IN.
 
-### RN-06: Calculo de costo total
-- nights = dias entre checkInDate y checkOutDate.
-- subtotal = nights * room.pricePerNight.
-- total = subtotal + (subtotal * taxRate).
-- taxRate se obtiene de config.properties.
+### RN-06 Check-out valido
+- No se permite check-out sin reserva en estado CHECKED_IN.
 
-### RN-07: Transaccionalidad critica
-Operaciones criticas con transaccion:
-- Create reservation
-- Check-in
-- Check-out
-- Cambios de estado que impacten disponibilidad/costo
+### RN-07 Calculo de costo
+- `nights = dias(checkInDate, checkOutDate)`.
+- `subtotal = nights * precioPorNoche`.
+- `total = subtotal + (subtotal * iva)`.
+- `iva` se toma desde `config.properties`.
 
-Nota de implementacion:
-- Como no habra capa service separada, estas reglas se orquestan en controller y se apoyan en DAO para validaciones de persistencia y consultas de negocio.
+### RN-08 Seguridad de credenciales
+- Password almacenada como hash (ejemplo BCrypt).
+- Login valida username + password + estado activo + rol.
 
 ## 4. Casos de Uso
 
-### UC-01 Crear habitacion
-Actor: Admin o Recepcionista autorizado
+### UC-01 Login
+Actor: Usuario del sistema
 
 Precondiciones:
-- roomNumber informado
-- roomNumber no existe
-- pricePerNight > 0
+- Usuario existe y esta activo.
+- Credenciales validas.
 
 Postcondiciones:
-- Habitacion persistida en estado active=true
+- Sesion autenticada con rol.
+- Se registra `lastLoginAt`.
 
-Errores:
-- DuplicateRoomNumberException
-- ValidationException
+### UC-02 Gestion de Habitaciones
+Actor: ADMIN o RECEPCIONISTA
 
-### UC-02 Registrar huesped
-Actor: Recepcionista
+Alcance:
+- Crear, editar, activar/desactivar.
+- Listar y filtrar por tipo o estado.
 
-Precondiciones:
-- fullName y email requeridos
-- email valido y no vacio
+### UC-03 Gestion de Huespedes
+Actor: RECEPCIONISTA
 
-Postcondiciones:
-- Huesped persistido en estado active=true
+Alcance:
+- CRUD de huespedes con `active=true` por defecto.
 
-Errores:
-- ValidationException
-- DuplicateEntityException (si se define email unico)
+### UC-04 Gestion de Usuarios
+Actor: ADMIN
 
-### UC-03 Crear reserva
-Actor: Recepcionista
+Alcance:
+- CRUD de usuarios.
+- Asignacion de rol y estado.
+- Password siempre en hash.
 
-Precondiciones:
-- Habitacion existente y activa
-- Huesped existente y activo
-- Fechas validas
-- No solapamiento
+### UC-05 Crear Reserva / Check-in
+Actor: RECEPCIONISTA
 
-Flujo principal:
-1. Validar entidad room.
-2. Validar entidad guest.
-3. Validar fechas.
-4. Verificar solapamiento.
-5. Calcular costo total.
-6. Persistir reserva en BOOKED.
+Reglas:
+- Validar habitacion, huesped, fechas y solapamiento.
+- Insertar reserva y actualizar estado de habitacion.
 
-Postcondiciones:
-- Reserva creada con totalCost calculado.
+### UC-06 Check-out
+Actor: RECEPCIONISTA
 
-Errores:
-- InactiveGuestException
-- RoomNotAvailableException
-- ReservationOverlapException
-- InvalidReservationDateException
+Reglas:
+- Solo reservas CHECKED_IN.
+- Calcular total final con IVA.
+- Actualizar reserva y liberar habitacion.
 
-### UC-04 Check-in
-Actor: Recepcionista
+### UC-07 Exportaciones CSV
+Actor: ADMIN
 
-Precondiciones:
-- Reserva en estado BOOKED
-- Fecha actual dentro de politica permitida (definir tolerancia)
+Salidas:
+- `habitaciones_export.csv`.
+- `reservas_activas.csv`.
 
-Postcondiciones:
-- Estado -> CHECKED_IN
+## 5. Contratos de Capa (interfaces objetivo)
 
-Errores:
-- InvalidReservationStateException
-- BusinessException
+### 5.1 Service
+- `AuthService.login(username, password)`
+- `HabitacionService.create/update/activate/deactivate/find/filter`
+- `HuespedService.register/update/activate/deactivate/find`
+- `UsuarioService.create/update/deactivate/find`
+- `ReservaService.createReservation/checkIn/checkOut/find`
+- `ExportService.exportHabitaciones/exportReservasActivas`
 
-### UC-05 Check-out
-Actor: Recepcionista
+### 5.2 DAO
+- GenericDAO con CRUD base.
+- DAO concretos con consultas especializadas:
+  - HabitacionDAO: `existsByNumero`, `findByTipo`, `findByEstado`, `findByActiva`.
+  - HuespedDAO: `existsByEmail`, `existsActivoById`, `findByActivo`.
+  - UsuarioDAO: `findByUsername`, `existsByUsername`.
+  - ReservaDAO: `existsOverlap`, `findByHabitacion`, `findByHuesped`, `findByEstado`, `updateStatus`.
 
-Precondiciones:
-- Reserva en estado CHECKED_IN
+### 5.3 Controller
+- Controllers solo coordinan UI/service y muestran mensajes con JOptionPane.
+- Manejan errores de negocio en mensajes amigables.
 
-Postcondiciones:
-- Estado -> CHECKED_OUT
+## 6. Persistencia y SQL (criterios)
+- PreparedStatement en todas las consultas.
+- try-with-resources para Connection/Statement/ResultSet.
+- Sin concatenacion SQL para parametros.
+- Constraints minimos:
+  - UNIQUE (`habitaciones.numero`, `usuarios.username`, opcional `huespedes.email`).
+  - FKs (`reservas.room_id`, `reservas.guest_id`, `reservas.created_by_user_id`).
+  - CHECK (`check_in < check_out`).
+- Indices minimos para rendimiento:
+  - `reservas(room_id)`, `reservas(guest_id)`, `reservas(status)`, `reservas(check_in, check_out)`.
 
-Errores:
-- InvalidReservationStateException
+## 7. Transacciones JDBC
 
-### UC-06 Exportar reportes CSV
-Actor: Admin
+### TX-01 Reserva / Check-in
+Secuencia minima:
+1. `setAutoCommit(false)`.
+2. Insertar o actualizar reserva a estado correspondiente.
+3. Actualizar habitacion a `OCUPADA`.
+4. `commit()`.
+5. Ante error: `rollback()` y excepcion de negocio.
 
-Entradas:
-- tipo de reporte
-- rango de fechas (opcional)
+### TX-02 Check-out
+Secuencia minima:
+1. `setAutoCommit(false)`.
+2. Validar estado CHECKED_IN.
+3. Calcular total con IVA.
+4. Actualizar reserva a CHECKED_OUT con total final.
+5. Actualizar habitacion a `DISPONIBLE`.
+6. `commit()`.
+7. Ante error: `rollback()`.
 
-Postcondiciones:
-- archivo CSV generado en ruta configurada
+## 8. Configuracion, archivos y logs
 
-Errores:
-- ReportExportException
-- IOException envuelta como excepcion de dominio
+### 8.1 `config.properties`
+Parametros obligatorios:
+- `db.url=jdbc:<dbms>://<host>:<port>/<database>`
+- `db.user=<username>`
+- `db.password=<password>`
+- `horaCheckIn=15`
+- `horaCheckOut=12`
+- `iva=0.19`
 
-## 5. Interfaces de Controller (casos de uso)
+### 8.2 Exportaciones
+- `habitaciones_export.csv`: listado completo de habitaciones.
+- `reservas_activas.csv`: reservas en estado activo/en curso.
 
-Estas interfaces representan los casos de uso de aplicacion en un estilo MVC sin capa service separada.
+### 8.3 Logging
+- Archivo `app.log` con errores tecnicos y eventos relevantes.
+- Trazas de operaciones CRUD y autenticacion.
 
-```java
-package com.app.controller;
+## 9. Excepciones de Dominio
 
-import com.app.model.entity.Room;
-import com.app.model.entity.Guest;
-import com.app.model.entity.Reservation;
-import com.app.model.entity.User;
-
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Optional;
-
-public interface RoomControllerContract {
-    Room create(Room room);
-    Room update(Room room);
-    boolean deactivate(Integer roomId);
-    Optional<Room> findById(Integer roomId);
-    Optional<Room> findByRoomNumber(String roomNumber);
-    List<Room> findAll();
-}
-
-public interface GuestControllerContract {
-    Guest register(Guest guest);
-    Guest update(Guest guest);
-    boolean activate(Integer guestId);
-    boolean deactivate(Integer guestId);
-    Optional<Guest> findById(Integer guestId);
-    List<Guest> findAllActive();
-    List<Guest> findAll();
-}
-
-public interface UserControllerContract {
-    User create(User user);
-    User update(User user);
-    Optional<User> findByUsername(String username);
-    Optional<User> findById(Integer userId);
-    boolean deactivate(Integer userId);
-}
-
-public interface ReservationControllerContract {
-    Reservation create(Integer roomId, Integer guestId, LocalDate checkIn, LocalDate checkOut, Integer createdByUserId);
-    Reservation checkIn(Integer reservationId);
-    Reservation checkOut(Integer reservationId);
-    Optional<Reservation> findById(Integer reservationId);
-    List<Reservation> findByRoom(Integer roomId);
-    List<Reservation> findByGuest(Integer guestId);
-    List<Reservation> findByDateRange(LocalDate from, LocalDate to);
-}
-
-public interface ReportControllerContract {
-    String exportReservationsCsv(LocalDate from, LocalDate to);
-    String exportRevenueCsv(LocalDate from, LocalDate to);
-    String exportOccupancyCsv(LocalDate from, LocalDate to);
-}
-```
-
-## 6. Interfaces DAO (solo contrato)
-
-```java
-package com.app.dao;
-
-import com.app.model.entity.Room;
-import com.app.model.entity.Guest;
-import com.app.model.entity.User;
-import com.app.model.entity.Reservation;
-
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Optional;
-
-public interface GenericDAO<T, ID> {
-    T save(T entity);
-    Optional<T> findById(ID id);
-    List<T> findAll();
-    boolean update(T entity);
-    boolean deleteById(ID id);
-}
-
-public interface RoomDAO extends GenericDAO<Room, Integer> {
-    Optional<Room> findByRoomNumber(String roomNumber);
-    boolean existsByRoomNumber(String roomNumber);
-    List<Room> findActive();
-}
-
-public interface GuestDAO extends GenericDAO<Guest, Integer> {
-    List<Guest> findByActive(boolean active);
-    boolean existsActiveById(Integer guestId);
-}
-
-public interface UserDAO extends GenericDAO<User, Integer> {
-    Optional<User> findByUsername(String username);
-    boolean existsByUsername(String username);
-}
-
-public interface ReservationDAO extends GenericDAO<Reservation, Integer> {
-    boolean existsOverlap(Integer roomId, LocalDate checkIn, LocalDate checkOut);
-    List<Reservation> findByRoom(Integer roomId);
-    List<Reservation> findByGuest(Integer guestId);
-    List<Reservation> findByDateRange(LocalDate from, LocalDate to);
-    List<Reservation> findActiveByRoom(Integer roomId); // BOOKED/CHECKED_IN
-    boolean updateStatus(Integer reservationId, String status);
-}
-```
-
-## 7. Excepciones de Dominio
-
-Jerarquia propuesta:
-- BusinessException (base)
-- ValidationException
-- NotFoundException
-- DuplicateEntityException
-- DuplicateRoomNumberException
-- InactiveGuestException
-- InvalidReservationDateException
-- ReservationOverlapException
-- RoomNotAvailableException
-- InvalidReservationStateException
-- ReportExportException
-- DataAccessException (wrapper de SQLException en capa DAO)
+Jerarquia recomendada:
+- `BusinessException` (base)
+- `ValidationException`
+- `AuthenticationException`
+- `AuthorizationException`
+- `NotFoundException`
+- `DuplicateRoomNumberException`
+- `DuplicateEntityException`
+- `InactiveGuestException`
+- `InvalidReservationDateException`
+- `ReservationOverlapException`
+- `RoomNotAvailableException`
+- `InvalidReservationStateException`
+- `ReportExportException`
+- `DataAccessException` (wrapper de SQLException)
 
 Contrato:
-- DAO lanza DataAccessException.
-- Controller valida reglas, traduce errores y lanza BusinessException.
-- View captura BusinessException y muestra mensajes amigables.
+- DAO convierte `SQLException -> DataAccessException`.
+- Service traduce a excepciones de negocio.
+- Controller/View muestran mensaje claro y registran detalle tecnico.
 
-## 8. Requisitos No Funcionales
-- Java SE 17
-- JDBC con PreparedStatement
-- try-with-resources en acceso a BD
-- Logs a archivo para errores tecnicos
-- UI con JOptionPane en capa view/controller
-- Pruebas JUnit 5 para reglas criticas
+## 10. Pruebas JUnit 5
 
-## 9. Definicion de Terminado (DoD)
-- Todos los casos de uso implementados.
-- Todas las RN validadas en controller (apoyado por DAO).
-- Transacciones aplicadas en operaciones criticas.
-- Excepciones de dominio mapeadas a mensajes de UI.
-- Reportes CSV funcionales.
-- Tests de reglas de negocio pasando.
-- README actualizado con setup + run + tests.
+Cobertura minima obligatoria:
+- Unicidad de numero de habitacion.
+- Disponibilidad de habitacion antes de reservar.
+- Huesped activo para reservar.
+- Fechas validas (`checkIn < checkOut`).
+- No solapamiento de reservas.
+- Check-out invalido sin reserva activa.
+- Calculo de costo final con IVA desde properties.
 
-## 10. Regla Final de Acompanamiento (Modo Tutor)
-- Regla obligatoria para este proyecto: antes de escribir codigo, se debe explicar el por que, el para que y el como de cada paso.
-- Todo el proceso es modo tutor, se explica y se discuten alternativas, y esperas a que el usuario llegue a las respuestas con su logica, ayudando así a mejorar el aprendizaje y la comprension profunda del proyecto.
-- Durante el trabajo normal, se prioriza guia pedagogica y explicaciones paso a paso.
-- No se debe generar codigo automaticamente; solo se escribe codigo cuando el usuario lo pida de forma explicita.
-- La prioridad tecnica de aprendizaje es: model -> dao -> controller -> pruebas. View se trata como prioridad secundaria.
+Lineamientos:
+- Usar `assertEquals`, `assertThrows`, `assertTrue`.
+- Ejecutar con `mvn test`.
+- Mantener trazabilidad `requisito -> test`.
+
+## 11. Definicion de Terminado (DoD)
+- Arquitectura por capas implementada (controller/service/dao/model/view).
+- Login con roles y password hash funcionando.
+- CRUD de habitaciones, huespedes, usuarios y reservas operativo.
+- Check-in/check-out transaccionales y consistentes.
+- Exportaciones CSV funcionando.
+- Configuracion leida desde properties.
+- Logging en `app.log` habilitado.
+- Reglas de negocio criticas validadas por pruebas en verde.
+- Documentacion en `target/docsFinal` actualizada por iteracion.
+
+## 12. Documentacion Viva en target/docsFinal
+En cada incremento se debe actualizar:
+- `MODELS_NOTEBOOK.md`
+- `DAOS_NOTEBOOK.md`
+- `CONTROLLERS_NOTEBOOK.md`
+- `SPEC_ALIGNMENT_NOTEBOOK.md`
+- `TESTS_NOTEBOOK.md` (recomendado)
+- `MIGRATIONS_NOTEBOOK.md` (recomendado)
+
+## 13. Regla de trabajo
+- Este proyecto se trabaja en modo tutor: primero decision de diseno, luego implementacion.
+- Las implementaciones deben mantener trazabilidad con este documento.
