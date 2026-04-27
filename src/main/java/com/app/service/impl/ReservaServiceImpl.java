@@ -1,5 +1,6 @@
 package com.app.service.impl;
 
+import com.app.config.AppConfig;
 import com.app.dao.HabitacionDAO;
 import com.app.dao.HuespedDAO;
 import com.app.dao.ReservaDAO;
@@ -16,7 +17,7 @@ import java.util.Optional;
 
 public class ReservaServiceImpl implements ReservaService {
 
-    private static final BigDecimal TAX_RATE = new BigDecimal("0.15");
+    private final BigDecimal taxRate;
 
     private final ReservaDAO reservaDAO;
     private final HabitacionDAO habitacionDAO;
@@ -26,6 +27,7 @@ public class ReservaServiceImpl implements ReservaService {
         this.reservaDAO = reservaDAO;
         this.habitacionDAO = habitacionDAO;
         this.huespedDAO = huespedDAO;
+        this.taxRate = AppConfig.getInstance().getIvaRate();
     }
 
     @Override
@@ -139,7 +141,7 @@ public class ReservaServiceImpl implements ReservaService {
     private BigDecimal calcularTotal(BigDecimal precioPorNoche, LocalDate checkIn, LocalDate checkOut) {
         long noches = ChronoUnit.DAYS.between(checkIn, checkOut);
         BigDecimal costoBase = precioPorNoche.multiply(BigDecimal.valueOf(noches));
-        BigDecimal impuesto = costoBase.multiply(TAX_RATE);
+        BigDecimal impuesto = costoBase.multiply(taxRate);
         return costoBase.add(impuesto);
     }
 }
