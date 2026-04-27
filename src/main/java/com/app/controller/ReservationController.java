@@ -6,12 +6,12 @@ import com.app.dao.HuespedDAO;
 import com.app.model.entity.Reserva;
 import com.app.model.entity.Habitacion;
 import com.app.model.entity.Huesped;
+import com.app.service.ReservaService;
+import com.app.service.impl.ReservaServiceImpl;
 import com.app.view.View;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 
@@ -29,15 +29,21 @@ import java.util.Optional;
 public class ReservationController {
 
     private final View view;
-    private final ReservaDAO reservaDAO;
+    private final ReservaService reservaService;
     private final HabitacionDAO habitacionDAO;
     private final HuespedDAO huespedDAO;
 
-    // Inyección de dependencias
+    // Inyección de dependencias (compatibilidad con la implementación actual basada en DAO)
     public ReservationController(View view, ReservaDAO reservaDAO, 
                                  HabitacionDAO habitacionDAO, HuespedDAO huespedDAO) {
+        this(view, new ReservaServiceImpl(reservaDAO, habitacionDAO, huespedDAO), habitacionDAO, huespedDAO);
+    }
+
+    // Constructor para la nueva capa service
+    public ReservationController(View view, ReservaService reservaService,
+                                 HabitacionDAO habitacionDAO, HuespedDAO huespedDAO) {
         this.view = view;
-        this.reservaDAO = reservaDAO;
+        this.reservaService = reservaService;
         this.habitacionDAO = habitacionDAO;
         this.huespedDAO = huespedDAO;
     }
@@ -74,85 +80,38 @@ public class ReservationController {
     // ── Crear reserva (operación más crítica) ──
     public void crearReserva() {
         try {
-            // Paso 1: Leer entrada del usuario
             String idHabitacionStr = view.askInput("ID de la habitación");
             String idHuespedStr = view.askInput("ID del huésped");
             String checkInStr = view.askInput("Fecha check-in (yyyy-MM-dd)");
             String checkOutStr = view.askInput("Fecha check-out (yyyy-MM-dd)");
 
-            // Paso 2: Parsear IDs y fechas
             int idHabitacion = Integer.parseInt(idHabitacionStr);
             int idHuesped = Integer.parseInt(idHuespedStr);
             LocalDate checkIn = LocalDate.parse(checkInStr);
             LocalDate checkOut = LocalDate.parse(checkOutStr);
 
-            // Paso 3: Validar fechas (RN-03)
-            if (!checkIn.isBefore(checkOut)) {
-                view.showError("Check-in debe ser anterior a check-out.");
-                return;
-            }
+            Reserva nueva = reservaService.crearReserva(idHabitacion, idHuesped, checkIn, checkOut);
 
-            // Paso 4: Verificar que habitación existe y está activa (RN-01 validación)
             Optional<Habitacion> optHabitacion = habitacionDAO.findById(idHabitacion);
-            if (optHabitacion.isEmpty()) {
-                view.showError("No existe habitación con ID " + idHabitacion);
-                return;
-            }
-            Habitacion habitacion = optHabitacion.get();
-            if (!habitacion.isActiva()) {
-                view.showError("La habitación " + habitacion.getNumero() + " no está activa.");
-                return;
-            }
-
-            // Paso 5: Verificar que huésped existe y está activo (RN-02)
             Optional<Huesped> optHuesped = huespedDAO.findById(idHuesped);
-            if (optHuesped.isEmpty()) {
-                view.showError("No existe huésped con ID " + idHuesped);
-                return;
-            }
-            Huesped huesped = optHuesped.get();
-            if (!huesped.isActivo()) {
-                view.showError("El huésped " + huesped.getNombre() + " no está activo.");
-                return;
-            }
 
-            // Paso 6: Verificar solapamiento (RN-04)
-            if (reservaDAO.existsOverlap(idHabitacion, checkIn, checkOut)) {
-                view.showError("Existe solapamiento: la habitación ya está reservada en esas fechas.");
-                return;
-            }
-
-            // Paso 7: Calcular costo (RN-06)
-            long noches = ChronoUnit.DAYS.between(checkIn, checkOut);
-            BigDecimal costoBase = habitacion.getPrecioPorNoche()
-                .multiply(BigDecimal.valueOf(noches));
-            BigDecimal tasaImpuesto = new BigDecimal("0.15"); // 15% impuesto
-            BigDecimal impuesto = costoBase.multiply(tasaImpuesto);
-            BigDecimal total = costoBase.add(impuesto);
-
-            // Paso 8: Crear objeto Reserva en estado BOOKED
-            Reserva nueva = new Reserva(0, idHabitacion, idHuesped, checkIn, checkOut, "BOOKED", total);
-
-            // Paso 9: Persistir
-            reservaDAO.save(nueva);
             view.showMessage("Reserva creada exitosamente con ID: " + nueva.getId());
-            view.showMessage("Habitación: " + habitacion.getNumero());
-            view.showMessage("Huésped: " + huesped.getNombre());
-            view.showMessage("Noches: " + noches);
-            view.showMessage("Costo base: $" + costoBase);
-            view.showMessage("Impuesto (15%): $" + impuesto);
-            view.showMessage("Total: $" + total);
+            optHabitacion.ifPresent(h -> view.showMessage("Habitación: " + h.getNumero()));
+            optHuesped.ifPresent(h -> view.showMessage("Huésped: " + h.getNombre()));
+            view.showMessage("Total: $" + nueva.getTotal());
 
         } catch (NumberFormatException e) {
             view.showError("ID inválido. Debe ser un número entero.");
         } catch (DateTimeParseException e) {
             view.showError("Fecha inválida. Usa formato yyyy-MM-dd.");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            view.showError(e.getMessage());
         }
     }
 
     // ── Listar todas las reservas ──
     public void listarTodas() {
-        List<Reserva> reservas = reservaDAO.findAll();
+        List<Reserva> reservas = reservaService.listarTodas();
         if (reservas.isEmpty()) {
             view.showMessage("No hay reservas registradas.");
         } else {
@@ -168,7 +127,7 @@ public class ReservationController {
         String input = view.askInput("ID de la reserva");
         try {
             int id = Integer.parseInt(input);
-            Optional<Reserva> reserva = reservaDAO.findById(id);
+            Optional<Reserva> reserva = reservaService.buscarPorId(id);
             if (reserva.isPresent()) {
                 view.showMessage("=== DETALLES DE RESERVA ===");
                 mostrarReserva(reserva.get());
@@ -185,7 +144,7 @@ public class ReservationController {
         String input = view.askInput("ID de la habitación");
         try {
             int idHabitacion = Integer.parseInt(input);
-            List<Reserva> reservas = reservaDAO.findByHabitacion(idHabitacion);
+            List<Reserva> reservas = reservaService.buscarPorHabitacion(idHabitacion);
             if (reservas.isEmpty()) {
                 view.showMessage("No hay reservas para la habitación " + idHabitacion);
             } else {
@@ -204,7 +163,7 @@ public class ReservationController {
         String input = view.askInput("ID del huésped");
         try {
             int idHuesped = Integer.parseInt(input);
-            List<Reserva> reservas = reservaDAO.findByHuesped(idHuesped);
+            List<Reserva> reservas = reservaService.buscarPorHuesped(idHuesped);
             if (reservas.isEmpty()) {
                 view.showMessage("No hay reservas para el huésped " + idHuesped);
             } else {
@@ -221,7 +180,7 @@ public class ReservationController {
     // ── Buscar por estado ──
     public void buscarPorEstado() {
         String estado = view.askInput("Estado (BOOKED/CHECKED_IN/CHECKED_OUT/CANCELLED)");
-        List<Reserva> reservas = reservaDAO.findByEstado(estado.toUpperCase());
+        List<Reserva> reservas = reservaService.buscarPorEstado(estado);
         if (reservas.isEmpty()) {
             view.showMessage("No hay reservas con estado " + estado);
         } else {
@@ -237,7 +196,7 @@ public class ReservationController {
         String idStr = view.askInput("ID de la reserva");
         try {
             int id = Integer.parseInt(idStr);
-            Optional<Reserva> opt = reservaDAO.findById(id);
+            Optional<Reserva> opt = reservaService.buscarPorId(id);
             if (opt.isEmpty()) {
                 view.showError("No se encontró reserva con ID " + id);
                 return;
@@ -248,7 +207,7 @@ public class ReservationController {
             String nuevoEstado = view.askInput("Nuevo estado (BOOKED/CHECKED_IN/CHECKED_OUT/CANCELLED)");
 
             if (view.confirm("¿Cambiar estado a " + nuevoEstado + "?")) {
-                boolean ok = reservaDAO.updateEstado(id, nuevoEstado.toUpperCase());
+                boolean ok = reservaService.cambiarEstado(id, nuevoEstado);
                 if (ok) {
                     view.showMessage("Estado actualizado a: " + nuevoEstado);
                 } else {
@@ -266,7 +225,7 @@ public class ReservationController {
         try {
             int id = Integer.parseInt(input);
             if (view.confirm("¿Confirmar eliminación de la reserva " + id + "?")) {
-                boolean ok = reservaDAO.deleteById(id);
+                boolean ok = reservaService.eliminarReserva(id);
                 view.showMessage(ok ? "Reserva eliminada." : "No se encontró la reserva.");
             }
         } catch (NumberFormatException e) {
