@@ -14,18 +14,22 @@ public abstract class BaseView implements View {
         if (usuarios.isEmpty()) return "(Sin usuarios)";
 
         StringBuilder sb = new StringBuilder();
-        sb.append(String.format("%-5s %-20s %-30s%n", "ID", "NOMBRE", "EMAIL"));
-        sb.append("─".repeat(55)).append("\n");
+        sb.append(String.format("%-5s %-18s %-18s %-26s %-16s %-10s%n",
+            "ID", "NOMBRE", "USERNAME", "EMAIL", "ROL", "ESTADO"));
+        sb.append("─".repeat(95)).append("\n");
         for (Usuario u : usuarios) {
-            sb.append(String.format("%-5d %-20s %-30s%n",
-                    u.getId(), u.getNombre(), u.getEmail()));
+            sb.append(String.format("%-5d %-18s %-18s %-26s %-16s %-10s%n",
+                u.getId(), u.getNombre(), u.getUsername(), u.getEmail(),
+                u.getRole(), u.isActivo() ? "ACTIVO" : "INACTIVO"));
         }
         return sb.toString();
     }
 
     protected String formatUsuario(Usuario u) {
-        return String.format("ID: %d%nNombre: %s%nEmail: %s",
-                u.getId(), u.getNombre(), u.getEmail());
+        return String.format(
+            "ID: %d%nNombre: %s%nUsername: %s%nEmail: %s%nRol: %s%nEstado: %s",
+            u.getId(), u.getNombre(), u.getUsername(), u.getEmail(),
+            u.getRole(), u.isActivo() ? "ACTIVO" : "INACTIVO");
     }
 
     protected String buildMenu(String[] options, String title) {
