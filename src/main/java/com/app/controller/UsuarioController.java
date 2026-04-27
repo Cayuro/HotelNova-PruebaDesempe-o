@@ -2,6 +2,7 @@ package com.app.controller;
 
 import com.app.dao.UsuarioDAO;
 import com.app.model.entity.Usuario;
+import com.app.util.PasswordHasher;
 import com.app.view.View;
 
 import java.util.List;
@@ -76,10 +77,17 @@ public class UsuarioController {
 
     public void crearUsuario() {
         String nombre = view.askInput("Nombre del usuario");
-        String email  = view.askInput("Email del usuario");
+        String username = view.askInput("Username");
+        String email = view.askInput("Email del usuario");
+        String password = view.askInput("Password");
+        String role = view.askInput("Rol (ADMIN/RECEPCIONISTA)");
 
-        if (nombre.isBlank() || email.isBlank()) {
-            view.showError("Nombre y email son requeridos.");
+        if (nombre.isBlank() || username.isBlank() || email.isBlank() || password.isBlank()) {
+            view.showError("Nombre, username, email y password son requeridos.");
+            return;
+        }
+        if (usuarioDAO.existsByUsername(username)) {
+            view.showError("Ya existe un usuario con ese username.");
             return;
         }
         if (usuarioDAO.existsByEmail(email)) {
@@ -87,7 +95,17 @@ public class UsuarioController {
             return;
         }
 
+        String normalizedRole = role == null ? "" : role.trim().toUpperCase();
+        if (!normalizedRole.equals("ADMIN") && !normalizedRole.equals("RECEPCIONISTA")) {
+            view.showError("Rol inválido. Usa ADMIN o RECEPCIONISTA.");
+            return;
+        }
+
         Usuario nuevo = new Usuario(0, nombre, email);
+        nuevo.setUsername(username);
+        nuevo.setPasswordHash(PasswordHasher.hash(password));
+        nuevo.setRole(normalizedRole);
+        nuevo.setActivo(true);
         usuarioDAO.save(nuevo);
         view.showMessage("Usuario creado con ID: " + nuevo.getId());
     }
@@ -103,10 +121,41 @@ public class UsuarioController {
             }
             Usuario u = opt.get();
             String nombre = view.askInput("Nuevo nombre [" + u.getNombre() + "]");
+            String username = view.askInput("Nuevo username [" + u.getUsername() + "]");
             String email  = view.askInput("Nuevo email ["  + u.getEmail()  + "]");
+            String password = view.askInput("Nuevo password [dejar vacío para conservar]");
+            String role = view.askInput("Nuevo rol (ADMIN/RECEPCIONISTA) [" + u.getRole() + "]");
+            String activo = view.askInput("Activo (s/n) [" + (u.isActivo() ? "s" : "n") + "]");
 
             if (!nombre.isBlank()) u.setNombre(nombre);
-            if (!email.isBlank())  u.setEmail(email);
+            if (!username.isBlank() && !username.equals(u.getUsername())) {
+                if (usuarioDAO.existsByUsername(username)) {
+                    view.showError("Ya existe otro usuario con ese username.");
+                    return;
+                }
+                u.setUsername(username);
+            }
+            if (!email.isBlank() && !email.equals(u.getEmail())) {
+                if (usuarioDAO.existsByEmail(email)) {
+                    view.showError("Ya existe otro usuario con ese email.");
+                    return;
+                }
+                u.setEmail(email);
+            }
+            if (!password.isBlank()) {
+                u.setPasswordHash(PasswordHasher.hash(password));
+            }
+            if (!role.isBlank()) {
+                String normalizedRole = role.trim().toUpperCase();
+                if (!normalizedRole.equals("ADMIN") && !normalizedRole.equals("RECEPCIONISTA")) {
+                    view.showError("Rol inválido. Usa ADMIN o RECEPCIONISTA.");
+                    return;
+                }
+                u.setRole(normalizedRole);
+            }
+            if (!activo.isBlank()) {
+                u.setActivo(activo.trim().equalsIgnoreCase("s"));
+            }
 
             boolean ok = usuarioDAO.update(u);
             view.showMessage(ok ? "Usuario actualizado." : "No se pudo actualizar.");

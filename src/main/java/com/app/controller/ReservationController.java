@@ -219,6 +219,48 @@ public class ReservationController {
         }
     }
 
+    public void checkIn() {
+        String input = view.askInput("ID de la reserva para check-in");
+        try {
+            int id = Integer.parseInt(input);
+            Optional<Reserva> opt = reservaService.buscarPorId(id);
+            if (opt.isEmpty()) {
+                view.showError("No se encontró reserva con ID " + id);
+                return;
+            }
+
+            if (view.confirm("¿Confirmar check-in de la reserva " + id + "?")) {
+                reservaService.checkIn(id);
+                view.showMessage("Reserva " + id + " actualizada a CHECKED_IN");
+            }
+        } catch (NumberFormatException e) {
+            view.showError("ID inválido.");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            view.showError(e.getMessage());
+        }
+    }
+
+    public void checkOut() {
+        String input = view.askInput("ID de la reserva para check-out");
+        try {
+            int id = Integer.parseInt(input);
+            Optional<Reserva> opt = reservaService.buscarPorId(id);
+            if (opt.isEmpty()) {
+                view.showError("No se encontró reserva con ID " + id);
+                return;
+            }
+
+            if (view.confirm("¿Confirmar check-out de la reserva " + id + "?")) {
+                reservaService.checkOut(id);
+                view.showMessage("Reserva " + id + " actualizada a CHECKED_OUT");
+            }
+        } catch (NumberFormatException e) {
+            view.showError("ID inválido.");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            view.showError(e.getMessage());
+        }
+    }
+
     // ── Eliminar reserva ──
     public void eliminarReserva() {
         String input = view.askInput("ID de la reserva a eliminar");

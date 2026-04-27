@@ -2,6 +2,8 @@ package com.app.controller;
 
 import com.app.dao.HabitacionDAO;
 import com.app.model.entity.Habitacion;
+import com.app.service.HabitacionService;
+import com.app.service.impl.HabitacionServiceImpl;
 import com.app.view.View;
 
 import java.math.BigDecimal;
@@ -18,12 +20,16 @@ import java.util.Optional;
 public class HabitacionController {
 
     private final View view;
-    private final HabitacionDAO habitacionDAO;
+    private final HabitacionService habitacionService;
 
-    // Inyección de dependencias
+    // Compatibilidad con wiring actual basado en DAO
     public HabitacionController(View view, HabitacionDAO habitacionDAO) {
+        this(view, new HabitacionServiceImpl(habitacionDAO));
+    }
+
+    public HabitacionController(View view, HabitacionService habitacionService) {
         this.view = view;
-        this.habitacionDAO = habitacionDAO;
+        this.habitacionService = habitacionService;
     }
 
     // ── Menú principal ──
@@ -57,48 +63,25 @@ public class HabitacionController {
     public void crearHabitacion() {
         try {
             String numero = view.askInput("Número de habitación");
-            if (numero.isBlank()) {
-                view.showError("Número es requerido.");
-                return;
-            }
-
-            // Validar unicidad (RN-01)
-            if (habitacionDAO.existsByNumero(numero)) {
-                view.showError("Ya existe una habitación con número " + numero);
-                return;
-            }
-
             String tipo = view.askInput("Tipo (Suite/Doble/Individual)");
-            if (tipo.isBlank()) {
-                view.showError("Tipo es requerido.");
-                return;
-            }
-
             String precioStr = view.askInput("Precio por noche");
-            try {
-                BigDecimal precio = new BigDecimal(precioStr);
-                if (precio.compareTo(BigDecimal.ZERO) <= 0) {
-                    view.showError("El precio debe ser mayor a 0.");
-                    return;
-                }
 
-                Habitacion nueva = new Habitacion(0, numero, tipo, precio, true);
-                habitacionDAO.save(nueva);
-                view.showMessage("Habitación creada con ID: " + nueva.getId() +
-                        " (Número: " + numero + ", Tipo: " + tipo + ")");
+            BigDecimal precio = new BigDecimal(precioStr);
+            Habitacion nueva = new Habitacion(0, numero, tipo, precio, true);
+            Habitacion created = habitacionService.crear(nueva);
+            view.showMessage("Habitación creada con ID: " + created.getId() +
+                    " (Número: " + numero + ", Tipo: " + tipo + ")");
 
-            } catch (NumberFormatException e) {
-                view.showError("Precio inválido. Usa formato decimal.");
-            }
-
-        } catch (Exception e) {
-            view.showError("Error al crear habitación: " + e.getMessage());
+        } catch (NumberFormatException e) {
+            view.showError("Precio inválido. Usa formato decimal.");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            view.showError(e.getMessage());
         }
     }
 
     // ── Listar todas las habitaciones ──
     public void listarTodas() {
-        List<Habitacion> habitaciones = habitacionDAO.findAll();
+        List<Habitacion> habitaciones = habitacionService.listarTodas();
         if (habitaciones.isEmpty()) {
             view.showMessage("No hay habitaciones registradas.");
         } else {
@@ -114,7 +97,7 @@ public class HabitacionController {
         String input = view.askInput("ID de la habitación");
         try {
             int id = Integer.parseInt(input);
-            Optional<Habitacion> habitacion = habitacionDAO.findById(id);
+            Optional<Habitacion> habitacion = habitacionService.buscarPorId(id);
             if (habitacion.isPresent()) {
                 view.showMessage("=== DETALLES DE HABITACIÓN ===");
                 mostrarHabitacion(habitacion.get());
@@ -131,7 +114,7 @@ public class HabitacionController {
         String input = view.askInput("ID de la habitación a actualizar");
         try {
             int id = Integer.parseInt(input);
-            Optional<Habitacion> opt = habitacionDAO.findById(id);
+            Optional<Habitacion> opt = habitacionService.buscarPorId(id);
             if (opt.isEmpty()) {
                 view.showError("No se encontró habitación con ID " + id);
                 return;
@@ -152,11 +135,13 @@ public class HabitacionController {
                 h.setActiva(activoInput.equalsIgnoreCase("s"));
             }
 
-            boolean ok = habitacionDAO.update(h);
+            boolean ok = habitacionService.actualizar(h);
             view.showMessage(ok ? "Habitación actualizada." : "No se pudo actualizar.");
 
         } catch (NumberFormatException e) {
             view.showError("Entrada inválida.");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            view.showError(e.getMessage());
         }
     }
 
@@ -166,7 +151,7 @@ public class HabitacionController {
         try {
             int id = Integer.parseInt(input);
             if (view.confirm("¿Confirmar eliminación de la habitación " + id + "?")) {
-                boolean ok = habitacionDAO.deleteById(id);
+                boolean ok = habitacionService.eliminar(id);
                 view.showMessage(ok ? "Habitación eliminada." : "No se encontró la habitación.");
             }
         } catch (NumberFormatException e) {
@@ -176,7 +161,7 @@ public class HabitacionController {
 
     // ── Listar habitaciones disponibles (activas) ──
     public void listarDisponibles() {
-        List<Habitacion> disponibles = habitacionDAO.findByActiva(true);
+        List<Habitacion> disponibles = habitacionService.listarActivas();
         if (disponibles.isEmpty()) {
             view.showMessage("No hay habitaciones disponibles.");
         } else {

@@ -2,6 +2,8 @@ package com.app.controller;
 
 import com.app.dao.HuespedDAO;
 import com.app.model.entity.Huesped;
+import com.app.service.HuespedService;
+import com.app.service.impl.HuespedServiceImpl;
 import com.app.view.View;
 
 import java.util.List;
@@ -18,12 +20,16 @@ import java.util.Optional;
 public class HuespedController {
 
     private final View view;
-    private final HuespedDAO huespedDAO;
+    private final HuespedService huespedService;
 
-    // Inyección de dependencias
+    // Compatibilidad con wiring actual basado en DAO
     public HuespedController(View view, HuespedDAO huespedDAO) {
+        this(view, new HuespedServiceImpl(huespedDAO));
+    }
+
+    public HuespedController(View view, HuespedService huespedService) {
         this.view = view;
-        this.huespedDAO = huespedDAO;
+        this.huespedService = huespedService;
     }
 
     // ── Menú principal ──
@@ -59,26 +65,19 @@ public class HuespedController {
         String nombre = view.askInput("Nombre del huésped");
         String email = view.askInput("Email del huésped");
 
-        if (nombre.isBlank() || email.isBlank()) {
-            view.showError("Nombre y email son requeridos.");
-            return;
+        try {
+            Huesped nuevo = new Huesped(0, nombre, email, true);
+            Huesped created = huespedService.crear(nuevo);
+            view.showMessage("Huésped creado con ID: " + created.getId() +
+                    " (Nombre: " + nombre + ", Email: " + email + ")");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            view.showError(e.getMessage());
         }
-
-        // Validar email único
-        if (huespedDAO.existsByEmail(email)) {
-            view.showError("Ya existe un huésped con ese email.");
-            return;
-        }
-
-        Huesped nuevo = new Huesped(0, nombre, email, true); // Por defecto activo
-        huespedDAO.save(nuevo);
-        view.showMessage("Huésped creado con ID: " + nuevo.getId() +
-                " (Nombre: " + nombre + ", Email: " + email + ")");
     }
 
     // ── Listar todos los huéspedes ──
     public void listarTodos() {
-        List<Huesped> huespedes = huespedDAO.findAll();
+        List<Huesped> huespedes = huespedService.listarTodos();
         if (huespedes.isEmpty()) {
             view.showMessage("No hay huéspedes registrados.");
         } else {
@@ -94,7 +93,7 @@ public class HuespedController {
         String input = view.askInput("ID del huésped");
         try {
             int id = Integer.parseInt(input);
-            Optional<Huesped> huesped = huespedDAO.findById(id);
+            Optional<Huesped> huesped = huespedService.buscarPorId(id);
             if (huesped.isPresent()) {
                 view.showMessage("=== DETALLES DEL HUÉSPED ===");
                 mostrarHuesped(huesped.get());
@@ -111,7 +110,7 @@ public class HuespedController {
         String input = view.askInput("ID del huésped a actualizar");
         try {
             int id = Integer.parseInt(input);
-            Optional<Huesped> opt = huespedDAO.findById(id);
+            Optional<Huesped> opt = huespedService.buscarPorId(id);
             if (opt.isEmpty()) {
                 view.showError("No se encontró huésped con ID " + id);
                 return;
@@ -121,21 +120,18 @@ public class HuespedController {
             String nombre = view.askInput("Nuevo nombre [" + h.getNombre() + "]");
             String email = view.askInput("Nuevo email [" + h.getEmail() + "]");
 
-            if (!nombre.isBlank()) h.setNombre(nombre);
-            if (!email.isBlank()) {
-                // Verificar que el nuevo email no esté duplicado (si es diferente)
-                if (!email.equals(h.getEmail()) && huespedDAO.existsByEmail(email)) {
-                    view.showError("Ya existe otro huésped con ese email.");
-                    return;
-                }
-                h.setEmail(email);
-            }
+            // Evita mutar la instancia original antes de validar reglas en service.
+            Huesped toUpdate = new Huesped(h.getId(), h.getNombre(), h.getEmail(), h.isActivo());
+            if (!nombre.isBlank()) toUpdate.setNombre(nombre);
+            if (!email.isBlank()) toUpdate.setEmail(email);
 
-            boolean ok = huespedDAO.update(h);
+            boolean ok = huespedService.actualizar(toUpdate);
             view.showMessage(ok ? "Huésped actualizado." : "No se pudo actualizar.");
 
         } catch (NumberFormatException e) {
             view.showError("ID inválido.");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            view.showError(e.getMessage());
         }
     }
 
@@ -145,7 +141,7 @@ public class HuespedController {
         try {
             int id = Integer.parseInt(input);
             if (view.confirm("¿Confirmar eliminación del huésped " + id + "?")) {
-                boolean ok = huespedDAO.deleteById(id);
+                boolean ok = huespedService.eliminar(id);
                 view.showMessage(ok ? "Huésped eliminado." : "No se encontró el huésped.");
             }
         } catch (NumberFormatException e) {
@@ -155,7 +151,7 @@ public class HuespedController {
 
     // ── Listar huéspedes activos ──
     public void listarActivos() {
-        List<Huesped> activos = huespedDAO.findByActivo(true);
+        List<Huesped> activos = huespedService.listarActivos();
         if (activos.isEmpty()) {
             view.showMessage("No hay huéspedes activos.");
         } else {
@@ -171,7 +167,7 @@ public class HuespedController {
         String input = view.askInput("ID del huésped");
         try {
             int id = Integer.parseInt(input);
-            Optional<Huesped> opt = huespedDAO.findById(id);
+            Optional<Huesped> opt = huespedService.buscarPorId(id);
             if (opt.isEmpty()) {
                 view.showError("No se encontró huésped con ID " + id);
                 return;
@@ -181,12 +177,17 @@ public class HuespedController {
             String accion = h.isActivo() ? "desactivar" : "activar";
             if (view.confirm("¿" + accion.substring(0, 1).toUpperCase() + accion.substring(1) +
                     " al huésped " + h.getNombre() + "?")) {
-                h.setActivo(!h.isActivo());
-                boolean ok = huespedDAO.update(h);
-                view.showMessage(ok ? "Huésped " + accion + "do." : "No se pudo actualizar.");
+                boolean ok = huespedService.toggleActivo(id);
+                boolean activoFinal = huespedService.buscarPorId(id)
+                        .map(Huesped::isActivo)
+                        .orElse(h.isActivo());
+                String estado = activoFinal ? "activado" : "desactivado";
+                view.showMessage(ok ? "Huésped " + estado + "." : "No se pudo actualizar.");
             }
         } catch (NumberFormatException e) {
             view.showError("ID inválido.");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            view.showError(e.getMessage());
         }
     }
 
