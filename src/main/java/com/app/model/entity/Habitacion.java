@@ -16,6 +16,25 @@ public class Habitacion {
 
     public Habitacion() {}
 
+    public Habitacion(int id, String numero, String tipo,  
+                     BigDecimal precioPorNoche, Boolean estado){
+        this.id = id;
+        this.numero = numero;
+        this.tipo = tipo;
+        this.capacidad = switch (tipo.toUpperCase()) {
+            case "SINGLE" -> 1;
+            case "DOUBLE" -> 2;
+            case "DOBLE" -> 2;
+            case "SUITE" -> 4;
+            default -> 1;
+        };
+        this.precioPorNoche = precioPorNoche;
+        this.estado = estado ? "DISPONIBLE" : "OCUPADA";
+        this.activa = true;
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+                     }
+
     public Habitacion(int id, String numero, String tipo, int capacidad, 
                      BigDecimal precioPorNoche, String estado, boolean activa) {
         this.id = id;

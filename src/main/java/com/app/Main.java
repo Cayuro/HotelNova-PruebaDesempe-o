@@ -108,7 +108,7 @@ public class Main {
                 case 1 -> reservaController.run();
                 case 2 -> huespedController.run();
                 case 3 -> habitacionctrl.run();
-                case 5 -> running = false;
+                case 4 -> running = false;
                 default -> view.showError("Opcion no valida");
                 }
             } else {

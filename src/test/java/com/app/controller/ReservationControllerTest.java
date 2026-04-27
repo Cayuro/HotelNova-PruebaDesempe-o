@@ -11,6 +11,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -291,6 +293,13 @@ class ReservationControllerTest {
         @Override
         public List<Habitacion> findByActiva(boolean activa) {
             return storage.values().stream().filter(h -> h.isActiva() == activa).toList();
+        }
+
+        @Override
+        public boolean updateEstadoWithConnection(Connection conn, int idHabitacion, String estado)
+                throws SQLException {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException("Unimplemented method 'updateEstadoWithConnection'");
         }
     }
 
