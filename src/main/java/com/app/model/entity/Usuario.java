@@ -1,31 +1,62 @@
 package com.app.model.entity;
 
-public class Usuario {
+import java.time.LocalDateTime;
 
-    private int    id;
-    private String nombre;
-    private String email;
-    private String password; // Agregado para autenticación
-    private String role; // Agregado para roles (admin, huésped)
+public class Usuario extends Persona {
+
+    private String username;
+    private String passwordHash;
+    private String role;
+    private boolean activo;
+    private LocalDateTime lastLoginAt;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
     public Usuario() {}
+
     public Usuario(int id, String nombre, String email) {
-        this.id     = id;
-        this.nombre = nombre;
-        this.email  = email;
+        super(id, nombre, email);
+        this.username = nombre;
+        this.passwordHash = "";
+        this.role = "RECEPCIONISTA";
+        this.activo = true;
+    }
+
+    public Usuario(int id, String nombre, String email, String username, String passwordHash,
+                   String role, boolean activo, LocalDateTime lastLoginAt,
+                   LocalDateTime createdAt, LocalDateTime updatedAt) {
+        super(id, nombre, email);
+        this.username = username;
+        this.passwordHash = passwordHash;
+        this.role = role;
+        this.activo = activo;
+        this.lastLoginAt = lastLoginAt;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
     }
 
     // Getters / Setters
-    public int    getId()    { return id; }
-    public String getNombre(){ return nombre; }
-    public String getEmail() { return email; }
-    public void   setId(int id)           { this.id     = id; }
-    public void   setNombre(String nombre){ this.nombre = nombre; }
-    public void   setEmail(String email)  { this.email  = email; }
+
+    public String getUsername() { return username; }
+    public String getPasswordHash() { return passwordHash; }
+    public String getRole() { return role; }
+    public boolean isActivo() { return activo; }
+    public LocalDateTime getLastLoginAt() { return lastLoginAt; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+
+    public void setUsername(String username) { this.username = username; }
+    public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
+    public void setRole(String role) { this.role = role; }
+    public void setActivo(boolean activo) { this.activo = activo; }
+    public void setLastLoginAt(LocalDateTime lastLoginAt) { this.lastLoginAt = lastLoginAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 
     @Override
     public String toString() {
-        return String.format("Usuario{id=%d, nombre='%s', email='%s'}",
-                id, nombre, email);
+        return String.format(
+                "Usuario{id=%d, nombre='%s', username='%s', email='%s', role='%s', activo=%s}",
+                getId(), getNombre(), username, getEmail(), role, activo);
     }
 }

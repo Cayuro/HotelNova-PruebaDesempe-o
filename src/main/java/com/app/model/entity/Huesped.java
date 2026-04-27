@@ -1,6 +1,6 @@
 package com.app.model.entity;
 
-public class Huesped extends Usuario{
+public class Huesped extends Persona{
     private boolean activo;
 
     public Huesped(){}
