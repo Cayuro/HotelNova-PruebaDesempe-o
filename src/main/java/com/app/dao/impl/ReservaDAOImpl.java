@@ -177,4 +177,13 @@ public class ReservaDAOImpl extends GenericDAOImpl<Reserva, Integer> implements 
             throw new RuntimeException("Error en updateEstado", e);
         }
     }
+
+    @Override
+    public boolean updateEstadoWithConnection(java.sql.Connection conn, int idReserva, String estado) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement(UPDATE_ESTADO)) {
+            ps.setString(1, estado);
+            ps.setInt(2, idReserva);
+            return ps.executeUpdate() > 0;
+        }
+    }
 }

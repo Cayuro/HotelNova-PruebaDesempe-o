@@ -144,4 +144,14 @@ public class HabitacionDAOImpl extends GenericDAOImpl<Habitacion, Integer> imple
         }
         return list;
     }
+
+    @Override
+    public boolean updateEstadoWithConnection(Connection conn, int idHabitacion, String estado) throws SQLException {
+        String sql = "UPDATE habitaciones SET estado=?, updated_at=CURRENT_TIMESTAMP WHERE id=?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, estado);
+            ps.setInt(2, idHabitacion);
+            return ps.executeUpdate() > 0;
+        }
+    }
 }
