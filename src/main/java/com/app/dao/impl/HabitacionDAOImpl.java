@@ -15,25 +15,32 @@ import java.util.Optional;
 
 public class HabitacionDAOImpl extends GenericDAOImpl<Habitacion, Integer> implements HabitacionDAO {
 
-    private static final String INSERT = "INSERT INTO habitaciones (numero, tipo, precio_por_noche, activa) VALUES (?, ?, ?, ?)";
-    private static final String UPDATE = "UPDATE habitaciones SET numero=?, tipo=?, precio_por_noche=?, activa=? WHERE id=?";
+    private static final String INSERT = "INSERT INTO habitaciones (numero, tipo, capacidad, precio_por_noche, estado, activa) VALUES (?, ?, ?, ?, ?, ?)";
+    private static final String UPDATE = "UPDATE habitaciones SET numero=?, tipo=?, capacidad=?, precio_por_noche=?, estado=?, activa=?, updated_at=CURRENT_TIMESTAMP WHERE id=?";
     private static final String DELETE = "DELETE FROM habitaciones WHERE id=?";
-    private static final String FIND_BY_ID = "SELECT id, numero, tipo, precio_por_noche, activa FROM habitaciones WHERE id=?";
-    private static final String FIND_ALL = "SELECT id, numero, tipo, precio_por_noche, activa FROM habitaciones";
-    private static final String FIND_BY_NUMERO = "SELECT id, numero, tipo, precio_por_noche, activa FROM habitaciones WHERE numero=?";
+    private static final String FIND_BY_ID = "SELECT id, numero, tipo, capacidad, precio_por_noche, estado, activa, created_at, updated_at FROM habitaciones WHERE id=?";
+    private static final String FIND_ALL = "SELECT id, numero, tipo, capacidad, precio_por_noche, estado, activa, created_at, updated_at FROM habitaciones";
+    private static final String FIND_BY_NUMERO = "SELECT id, numero, tipo, capacidad, precio_por_noche, estado, activa, created_at, updated_at FROM habitaciones WHERE numero=?";
     private static final String EXISTS_NUMERO = "SELECT COUNT(*) FROM habitaciones WHERE numero=?";
-    private static final String FIND_BY_ACTIVA = "SELECT id, numero, tipo, precio_por_noche, activa FROM habitaciones WHERE activa=?";
+    private static final String FIND_BY_ACTIVA = "SELECT id, numero, tipo, capacidad, precio_por_noche, estado, activa, created_at, updated_at FROM habitaciones WHERE activa=?";
 
     @Override
     protected Habitacion mapRow(ResultSet rs) throws SQLException {
         BigDecimal precioPorNoche = rs.getBigDecimal("precio_por_noche");
-        return new Habitacion(
+        Habitacion h = new Habitacion(
                 rs.getInt("id"),
                 rs.getString("numero"),
                 rs.getString("tipo"),
+                rs.getInt("capacidad"),
                 precioPorNoche,
+                rs.getString("estado"),
                 rs.getBoolean("activa")
         );
+        h.setCreatedAt(rs.getTimestamp("created_at") != null ? 
+            rs.getTimestamp("created_at").toLocalDateTime() : null);
+        h.setUpdatedAt(rs.getTimestamp("updated_at") != null ? 
+            rs.getTimestamp("updated_at").toLocalDateTime() : null);
+        return h;
     }
 
     @Override protected String getInsertSQL() { return INSERT; }
@@ -46,17 +53,21 @@ public class HabitacionDAOImpl extends GenericDAOImpl<Habitacion, Integer> imple
     protected void setInsertParams(PreparedStatement ps, Habitacion entity) throws SQLException {
         ps.setString(1, entity.getNumero());
         ps.setString(2, entity.getTipo());
-        ps.setBigDecimal(3, entity.getPrecioPorNoche());
-        ps.setBoolean(4, entity.isActiva());
+        ps.setInt(3, entity.getCapacidad());
+        ps.setBigDecimal(4, entity.getPrecioPorNoche());
+        ps.setString(5, entity.getEstado() != null ? entity.getEstado() : "DISPONIBLE");
+        ps.setBoolean(6, entity.isActiva());
     }
 
     @Override
     protected void setUpdateParams(PreparedStatement ps, Habitacion entity) throws SQLException {
         ps.setString(1, entity.getNumero());
         ps.setString(2, entity.getTipo());
-        ps.setBigDecimal(3, entity.getPrecioPorNoche());
-        ps.setBoolean(4, entity.isActiva());
-        ps.setInt(5, entity.getId());
+        ps.setInt(3, entity.getCapacidad());
+        ps.setBigDecimal(4, entity.getPrecioPorNoche());
+        ps.setString(5, entity.getEstado() != null ? entity.getEstado() : "DISPONIBLE");
+        ps.setBoolean(6, entity.isActiva());
+        ps.setInt(7, entity.getId());
     }
 
     @Override
