@@ -63,11 +63,13 @@ public class HabitacionController {
     public void crearHabitacion() {
         try {
             String numero = view.askInput("Número de habitación");
-            String tipo = view.askInput("Tipo (Suite/Doble/Individual)");
+            String tipo = view.askInput("Tipo (SINGLE/DOUBLE/SUITE)");
+            String capacidadStr = view.askInput("Capacidad (número de huéspedes)");
             String precioStr = view.askInput("Precio por noche");
 
+            int capacidad = Integer.parseInt(capacidadStr);
             BigDecimal precio = new BigDecimal(precioStr);
-            Habitacion nueva = new Habitacion(0, numero, tipo, precio, true);
+            Habitacion nueva = new Habitacion(0, numero, tipo, capacidad, precio, "DISPONIBLE", true);
             Habitacion created = habitacionService.crear(nueva);
             view.showMessage("Habitación creada con ID: " + created.getId() +
                     " (Número: " + numero + ", Tipo: " + tipo + ")");
